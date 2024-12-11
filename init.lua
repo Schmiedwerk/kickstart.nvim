@@ -393,7 +393,8 @@ require('lazy').setup({
             },
           },
         },
-        -- pickers = {}
+        -- Exclude build files from find_files
+        pickers = { find_files = { find_command = { 'fd', '--type', 'f', '--exclude', 'build*' } } },
         extensions = {
           ['ui-select'] = {
             require('telescope.themes').get_dropdown(),
