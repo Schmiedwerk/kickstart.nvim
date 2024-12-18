@@ -447,7 +447,13 @@ require('lazy').setup({
 
       -- Add keymaps to open extensions
       local extensions = require('telescope').extensions
-      vim.keymap.set('n', '<leader>b', extensions.file_browser.file_browser, { desc = 'Open File [B]rowser' })
+
+      vim.keymap.set('n', '<leader>b', function()
+        extensions.file_browser.file_browser {
+          path = vim.fn.expand '%:p:h',
+          select_buffer = true,
+        }
+      end, { desc = 'Open File [B]rowser' })
     end,
   },
   {
