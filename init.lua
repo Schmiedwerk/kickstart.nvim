@@ -414,7 +414,6 @@ require('lazy').setup({
           mappings = {
             --    i = { ['<c-enter>'] = 'to_fuzzy_refine' },
             i = {
-              ['<c-h>'] = require('telescope.actions').which_key,
               ['<c-Down>'] = require('telescope.actions').cycle_history_next,
               ['<c-Up>'] = require('telescope.actions').cycle_history_prev,
             },
