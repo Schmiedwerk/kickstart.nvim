@@ -22,7 +22,7 @@ return {
     'jay-babu/mason-nvim-dap.nvim',
 
     -- Add your own debuggers here
-    'leoluz/nvim-dap-go',
+    -- 'leoluz/nvim-dap-go',
   },
   keys = {
     -- Basic debugging keymaps, feel free to change to your liking!
@@ -94,7 +94,8 @@ return {
       -- online, please don't ask me how to install them :)
       ensure_installed = {
         -- Update this to ensure that you have the debuggers for the langs you want
-        'delve',
+        -- 'delve',
+        'cppdbg',
       },
     }
 
@@ -136,13 +137,111 @@ return {
     dap.listeners.before.event_terminated['dapui_config'] = dapui.close
     dap.listeners.before.event_exited['dapui_config'] = dapui.close
 
+    -- New tab instead of split terminal for debugging output
+    -- dap.defaults.fallback.terminal_win_cmd = 'tabnew'
+
     -- Install golang specific config
-    require('dap-go').setup {
-      delve = {
-        -- On Windows delve must be run attached or it crashes.
-        -- See https://github.com/leoluz/nvim-dap-go/blob/main/README.md#configuring
-        detached = vim.fn.has 'win32' == 0,
+    -- require('dap-go').setup {
+    --   delve = {
+    --     -- On Windows delve must be run attached or it crashes.
+    --     -- See https://github.com/leoluz/nvim-dap-go/blob/main/README.md#configuring
+    --     detached = vim.fn.has 'win32' == 0,
+    --   },
+    -- }
+
+    -- =================================================================================================================
+    -- C++ Debug Adapter Setup (cppdbg / GDB)
+    -- =================================================================================================================
+
+    -- Prompt the user for the target executable
+    local function prompt_executable_path(prefix_msg)
+      local prompt = 'Path to executable: '
+
+      if prefix_msg then
+        prompt = prefix_msg .. ' ' .. prompt
+      end
+
+      return vim.fn.input(prompt, vim.fn.getcwd() .. '/', 'file')
+    end
+
+    -- Prompt the user to pick an executable from a build directory
+    local function pick_executable(build_dir)
+      build_dir = build_dir or vim.fn.getcwd() .. '/build-x86_64/bin'
+
+      local candidates = vim.fn.glob(build_dir .. '/*', false, true)
+      local executables = {}
+
+      -- Filter only files that are executable
+      for _, file in ipairs(candidates) do
+        if vim.fn.executable(file) == 1 then
+          table.insert(executables, file)
+        end
+      end
+
+      -- Fallback if no executables found
+      if #executables == 0 then
+        return prompt_executable_path 'No executables found.'
+      end
+
+      -- Build numbered list for inputlist
+      local input_list = { 'Select executable' }
+      for i, exe in ipairs(executables) do
+        table.insert(input_list, string.format('%d: %s', i, vim.fn.fnamemodify(exe, ':t')))
+      end
+
+      -- Let the user pick an executable
+      local choice = vim.fn.inputlist(input_list)
+
+      -- Handle the choice
+      if choice < 1 or choice > #executables then
+        return prompt_executable_path 'Fallback.'
+      end
+
+      return executables[choice]
+    end
+
+    -- Common setup variables
+    local cppdbg_id = 'cppdbg'
+    local cpp_setup_commands = {
+      {
+        text = '-enable-pretty-printing',
+        description = 'enable pretty printing',
+        ignoreFailures = false,
       },
     }
+
+    -- Register the cppdbg adapter
+    dap.adapters.cppdbg = {
+      id = cppdbg_id,
+      type = 'executable',
+      command = vim.fn.stdpath 'data' .. '/mason/packages/cpptools/extension/debugAdapters/bin/OpenDebugAD7',
+    }
+
+    -- Launch configurations for C++
+    dap.configurations.cpp = {
+      {
+        name = 'Launch file',
+        type = cppdbg_id,
+        request = 'launch',
+        program = pick_executable,
+        cwd = '${workspaceFolder}',
+        stopAtEntry = true,
+        setupCommands = cpp_setup_commands,
+      },
+      {
+        name = 'Attach to gdbserver :1234',
+        type = cppdbg_id,
+        request = 'attach',
+        MIMode = 'gdb',
+        miDebuggerServerAddress = 'localhost:1234',
+        miDebuggerPath = '/usr/bin/gdb',
+        cwd = '${workspaceFolder}',
+        program = prompt_executable_path,
+        setupCommands = cpp_setup_commands,
+      },
+    }
+
+    -- Apply the same configurations to C files
+    dap.configurations.c = dap.configurations.cpp
   end,
 }
