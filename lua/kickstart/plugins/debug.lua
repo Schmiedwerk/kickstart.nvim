@@ -172,6 +172,34 @@ return {
       return vim.fn.input(prompt, vim.fn.getcwd() .. '/', 'file')
     end
 
+    -- Prompt the user for program arguments
+    local last_args = ''
+    local function prompt_args()
+      local input = vim.fn.input('Args: ', last_args)
+      last_args = input
+
+      return vim.fn.split(input, ' \\+')
+    end
+
+    -- Prompt the user for environment variables
+    local last_env = ''
+    local function prompt_env()
+      local input = vim.fn.input('Env vars (KEY=VAL KEY=VAL): ', last_env)
+      last_env = input
+
+      local vars = {}
+      for _, pair in ipairs(vim.fn.split(input, ' \\+')) do
+        local kv = vim.fn.split(pair, '=', true)
+
+        if #kv == 2 then
+          -- vars[kv[1]] = kv[2]
+          table.insert(vars, { name = kv[1], value = kv[2] })
+        end
+      end
+
+      return vars
+    end
+
     -- Prompt the user to pick an executable from a build directory
     local function pick_executable(build_dir)
       build_dir = build_dir or vim.fn.getcwd() .. '/build-x86_64/bin'
@@ -192,7 +220,7 @@ return {
       end
 
       -- Build numbered list for inputlist
-      local input_list = { 'Select executable' }
+      local input_list = { 'Select executable.' }
       for i, exe in ipairs(executables) do
         table.insert(input_list, string.format('%d: %s', i, vim.fn.fnamemodify(exe, ':t')))
       end
@@ -227,15 +255,31 @@ return {
 
     -- Launch configurations for C++
     dap.configurations.cpp = {
-      {
+      setmetatable({
         name = 'Launch file',
         type = cppdbg_id,
         request = 'launch',
-        program = pick_executable,
-        cwd = '${workspaceFolder}',
-        stopAtEntry = true,
-        setupCommands = cpp_setup_commands,
-      },
+      }, {
+        -- Using __call instead of separate functions for the user-specified keys ensures the functions are executed in a
+        -- predictable, fixed order
+        __call = function(cfg)
+          local program = pick_executable()
+          local args = prompt_args()
+          local env = prompt_env()
+
+          return {
+            name = cfg.name,
+            type = cfg.type,
+            request = cfg.request,
+            program = program,
+            args = args,
+            environment = env,
+            cwd = '${workspaceFolder}',
+            stopAtEntry = true,
+            setupCommands = cpp_setup_commands,
+          }
+        end,
+      }),
       {
         name = 'Attach to gdbserver :1234',
         type = cppdbg_id,
