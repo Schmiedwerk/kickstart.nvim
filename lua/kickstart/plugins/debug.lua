@@ -137,6 +137,14 @@ return {
     dap.listeners.before.event_terminated['dapui_config'] = dapui.close
     dap.listeners.before.event_exited['dapui_config'] = dapui.close
 
+    -- Monkey-patch dap.terminate to reliably close dapui
+    local orig_terminate = dap.terminate
+    dap.terminate = function(...)
+      local res = orig_terminate(...)
+      dapui.close()
+      return res
+    end
+
     -- New tab instead of split terminal for debugging output
     -- dap.defaults.fallback.terminal_win_cmd = 'tabnew'
 
