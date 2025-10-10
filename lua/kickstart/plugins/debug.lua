@@ -161,6 +161,52 @@ return {
     -- C++ Debug Adapter Setup (cppdbg / GDB)
     -- =================================================================================================================
 
+    -- Persistence of the last user inputs to prefill prompts
+
+    local last_inputs_name = 'cpp_conf_last_inputs.lua'
+    local last_inputs_path = vim.fn.stdpath 'data' .. '/persistence/nvim-dap/' .. last_inputs_name
+
+    -- Load the saved last user inputs
+    local function load_last_inputs()
+      local ok_load, func_or_err, err_load = pcall(loadfile, last_inputs_path)
+
+      if not ok_load or not func_or_err then
+        -- Uses pcall's error when loadfile raised, otherwise loadfile's returned error message
+        local actual_err = not ok_load and func_or_err or err_load
+        vim.notify(string.format('Failed to load %s: "%s"', last_inputs_name, actual_err or 'unknown error'), vim.log.levels.WARN)
+        return {}
+      end
+
+      local ok_exec, last_inputs_or_err = pcall(func_or_err)
+
+      if not ok_exec then
+        vim.notify(string.format('Failed to execute %s: "%s"', last_inputs_name, last_inputs_or_err or 'unknown error'), vim.log.levels.ERROR)
+        return {}
+      end
+
+      if type(last_inputs_or_err) ~= 'table' then
+        vim.notify(string.format('%s did not return a table (got %s)', last_inputs_name, type(last_inputs_or_err)), vim.log.levels.ERROR)
+        return {}
+      end
+
+      return last_inputs_or_err
+    end
+
+    -- Save the last user inputs
+    local function save_last_inputs(tbl)
+      local dir = vim.fn.fnamemodify(last_inputs_path, ':h') -- Get parent directory
+      vim.fn.mkdir(dir, 'p') -- Create all missing parent directories if needed
+
+      local file, err = io.open(last_inputs_path, 'w')
+      if not file then
+        vim.notify(string.format('Failed to open %s for writing: "%s"', last_inputs_name, err or 'unknown error'), vim.log.levels.ERROR)
+        return
+      end
+
+      file:write('return ' .. vim.inspect(tbl))
+      file:close()
+    end
+
     -- Prompt the user for the target executable
     local function prompt_executable_path(prefix_msg)
       local prompt = 'Path to executable: '
@@ -173,31 +219,39 @@ return {
     end
 
     -- Prompt the user for program arguments
-    local last_args = ''
-    local function prompt_args()
+    local function prompt_args(last_args)
+      last_args = last_args or ''
       local input = vim.fn.input('Args: ', last_args)
-      last_args = input
 
-      return vim.fn.split(input, ' \\+')
+      local new_args = vim.fn.split(input, ' \\+')
+      local normalized_input = vim.fn.join(new_args, ' ')
+
+      return new_args, normalized_input
     end
 
     -- Prompt the user for environment variables
-    local last_env = ''
-    local function prompt_env()
-      local input = vim.fn.input('Env vars (KEY=VAL KEY=VAL): ', last_env)
-      last_env = input
+    local function prompt_envs(last_envs)
+      last_envs = last_envs or ''
+      local input = vim.fn.input('Env vars (KEY=VAL KEY=VAL): ', last_envs)
 
-      local vars = {}
+      local new_envs = {}
       for _, pair in ipairs(vim.fn.split(input, ' \\+')) do
         local kv = vim.fn.split(pair, '=', true)
 
         if #kv == 2 then
           -- vars[kv[1]] = kv[2]
-          table.insert(vars, { name = kv[1], value = kv[2] })
+          table.insert(new_envs, { name = kv[1], value = kv[2] })
         end
       end
 
-      return vars
+      local normalized_input = table.concat(
+        vim.tbl_map(function(kv)
+          return kv.name .. '=' .. kv.value
+        end, new_envs),
+        ' '
+      )
+
+      return new_envs, normalized_input
     end
 
     -- Prompt the user to pick an executable from a build directory
@@ -260,12 +314,18 @@ return {
         type = cppdbg_id,
         request = 'launch',
       }, {
-        -- Using __call instead of separate functions for the user-specified keys ensures the functions are executed in a
+        -- Using __call instead of separate functions for the user-specified keys ensures that user prompts are executed in a
         -- predictable, fixed order
         __call = function(cfg)
+          local last_inputs = load_last_inputs()
+
           local program = pick_executable()
-          local args = prompt_args()
-          local env = prompt_env()
+          local args, args_input = prompt_args(last_inputs.args)
+          local envs, envs_input = prompt_envs(last_inputs.envs)
+
+          last_inputs.args = args_input
+          last_inputs.envs = envs_input
+          save_last_inputs(last_inputs)
 
           return {
             name = cfg.name,
@@ -273,7 +333,7 @@ return {
             request = cfg.request,
             program = program,
             args = args,
-            environment = env,
+            environment = envs,
             cwd = '${workspaceFolder}',
             stopAtEntry = true,
             setupCommands = cpp_setup_commands,
