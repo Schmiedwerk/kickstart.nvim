@@ -6,6 +6,20 @@
 -- be extended to other languages as well. That's why it's called
 -- kickstart.nvim and not kitchen-sink.nvim ;)
 
+local function is_currently_debugging()
+  return require('dap').session() ~= nil
+end
+
+local function check_currently_debugging()
+  local currently_debugging = is_currently_debugging()
+
+  if not currently_debugging then
+    vim.notify('No debug session active.', vim.log.levels.INFO)
+  end
+
+  return currently_debugging
+end
+
 return {
   -- NOTE: Yes, you can install new plugins here!
   'mfussenegger/nvim-dap',
@@ -24,57 +38,102 @@ return {
     -- Add your own debuggers here
     -- 'leoluz/nvim-dap-go',
   },
+  init = function()
+    -- Register the '[D]ebug' group with which-key
+    local ok, which_key = pcall(require, 'which-key')
+    if ok then
+      which_key.add { { '<leader>d', group = '[D]ebug', icon = '🐞 ' } }
+    end
+  end,
   keys = {
     -- Basic debugging keymaps, feel free to change to your liking!
     {
-      '<F5>',
+      '<up>',
       function()
-        require('dap').continue()
+        if check_currently_debugging() then
+          require('dap').continue()
+        end
       end,
-      desc = 'Debug: Start/Continue',
+      desc = 'Debug: Continue',
     },
     {
-      '<F1>',
+      '<right>',
       function()
-        require('dap').step_into()
+        if check_currently_debugging() then
+          require('dap').step_into()
+        end
       end,
       desc = 'Debug: Step Into',
     },
     {
-      '<F2>',
+      '<down>',
       function()
-        require('dap').step_over()
+        if check_currently_debugging() then
+          require('dap').step_over()
+        end
       end,
       desc = 'Debug: Step Over',
     },
     {
-      '<F3>',
+      '<left>',
       function()
-        require('dap').step_out()
+        if check_currently_debugging() then
+          require('dap').step_out()
+        end
       end,
       desc = 'Debug: Step Out',
     },
     {
-      '<leader>b',
+      '<leader>ds',
+      function()
+        require('dap').continue()
+      end,
+      desc = '[D]ebug: [S]tart / Continue',
+    },
+    {
+      '<leader>dt',
+      function()
+        if check_currently_debugging() then
+          require('dap').terminate()
+        end
+      end,
+      desc = '[D]ebug: [T]erminate',
+    },
+    {
+      '<leader>db',
       function()
         require('dap').toggle_breakpoint()
       end,
-      desc = 'Debug: Toggle Breakpoint',
+      desc = '[D]ebug: Toggle [B]reakpoint',
     },
     {
-      '<leader>B',
+      '<leader>dB',
       function()
         require('dap').set_breakpoint(vim.fn.input 'Breakpoint condition: ')
       end,
-      desc = 'Debug: Set Breakpoint',
+      desc = '[D]ebug: Set [B]reakpoint',
+    },
+    {
+      '<leader>dl',
+      function()
+        if is_currently_debugging() then
+          local choice = vim.fn.confirm('Debug session active. Terminate it and start a new one?', '&Yes\n&No', 2)
+          if choice ~= 1 then
+            vim.notify('Run last configuration aborted.', vim.log.levels.INFO)
+            return
+          end
+        end
+        require('dap').run_last()
+      end,
+      desc = '[D]ebug: Run [L]ast Configuration',
     },
     -- Toggle to see last session result. Without this, you can't see session output in case of unhandled exception.
     {
-      '<F7>',
+      '<leader>du',
       function()
         require('dapui').toggle()
       end,
-      desc = 'Debug: See last session result.',
+      desc = '[D]ebug: Toggle dap-[u]i',
     },
   },
   config = function()
