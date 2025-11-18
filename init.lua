@@ -141,6 +141,18 @@ vim.o.timeoutlen = 300
 vim.o.splitright = true
 vim.o.splitbelow = true
 
+-- Pressing <Tab> inserts spaces instead of a literal tab character \t
+vim.o.expandtab = true
+
+-- Defines how many spaces a tab character takes visually when displaying it
+vim.o.tabstop = 4
+
+-- Defines how many spaces (or tab stops) are inserted/removed when indenting/unindenting (>>, <<)
+vim.o.shiftwidth = 4
+
+-- Defines how many spaces are inserted when pressing <Tab>
+vim.o.softtabstop = 4
+
 -- Sets how neovim will display certain whitespace characters in the editor.
 --  See `:help 'list'`
 --  and `:help 'listchars'`
