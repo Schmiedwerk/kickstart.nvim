@@ -48,7 +48,7 @@ return {
   keys = {
     -- Basic debugging keymaps, feel free to change to your liking!
     {
-      '<up>',
+      '<F5>',
       function()
         if check_currently_debugging() then
           require('dap').continue()
@@ -57,7 +57,7 @@ return {
       desc = 'Debug: Continue',
     },
     {
-      '<right>',
+      '<F4>',
       function()
         if check_currently_debugging() then
           require('dap').step_into()
@@ -66,7 +66,7 @@ return {
       desc = 'Debug: Step Into',
     },
     {
-      '<down>',
+      '<F2>',
       function()
         if check_currently_debugging() then
           require('dap').step_over()
@@ -75,7 +75,7 @@ return {
       desc = 'Debug: Step Over',
     },
     {
-      '<left>',
+      '<F1>',
       function()
         if check_currently_debugging() then
           require('dap').step_out()
