@@ -316,7 +316,7 @@ return {
 
     -- Prompt the user to pick an executable from a build directory
     local function pick_executable(build_dir)
-      build_dir = build_dir or vim.fn.getcwd() .. '/build/bin'
+      build_dir = build_dir or vim.fn.getcwd() .. '/build-x86_64/bin'
 
       local candidates = vim.fn.glob(build_dir .. '/*', false, true)
       local executables = {}
