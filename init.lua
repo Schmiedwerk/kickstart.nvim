@@ -434,6 +434,7 @@ require('lazy').setup({
               ['<c-Up>'] = require('telescope.actions').cycle_history_prev,
             },
           },
+          file_ignore_patterns = { 'build%-' },
         },
         extensions = {
           ['ui-select'] = {
