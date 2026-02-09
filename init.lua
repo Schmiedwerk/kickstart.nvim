@@ -434,10 +434,7 @@ require('lazy').setup({
               ['<c-Up>'] = require('telescope.actions').cycle_history_prev,
             },
           },
-          file_ignore_patterns = { 'build*', 'exclude' },
         },
-        -- Exclude build files from find_files (not necessary anymore because of file_ignore_patterns)
-        -- pickers = { find_files = { find_command = { 'fd', '--type', 'f', '--exclude', 'build*' } } },
         extensions = {
           ['ui-select'] = {
             require('telescope.themes').get_dropdown(),
