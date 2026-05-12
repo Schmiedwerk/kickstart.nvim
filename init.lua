@@ -739,6 +739,9 @@ require('lazy').setup({
           },
         },
         bashls = {},
+        groovyls = {
+          cmd = { 'java', '-jar', vim.fn.stdpath 'data' .. '/mason/packages/groovy-language-server/build/libs/groovy-language-server-all.jar' },
+        },
       }
 
       -- The following loop will configure each server with the capabilities we defined above.
